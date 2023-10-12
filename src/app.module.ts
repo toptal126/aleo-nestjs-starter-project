@@ -8,7 +8,6 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
-console.log(process.env.MONGODB_URI);
 @Module({
   imports: [
     AuthModule,
@@ -18,7 +17,7 @@ console.log(process.env.MONGODB_URI);
       isGlobal: true,
     }),
     MongooseModule.forRoot(
-      `${process.env.MONGODB_URI}/${process.env.DATABASE_NAME}?authSource=admin`,
+      `${process.env.MONGODB_URI}/${process.env.DATABASE_NAME}?authSource=admin?retryWrites=true&w=majority`,
       {
         connectionName: process.env.DATABASE_NAME,
       },
