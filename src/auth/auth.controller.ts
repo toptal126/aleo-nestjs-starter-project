@@ -6,9 +6,12 @@ import {
   HttpStatus,
   Post,
   Request,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
+import { CreateUserDto } from './dto/CreateUserDto.dto';
+import { UsersService } from 'src/users/users.service';
 // import { Address } from '@aleohq/sdk';
 // import { Signature } from '@aleohq/sdk/dist';
 
@@ -18,29 +21,47 @@ export const importDynamic = new Function(
 );
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userService: UsersService,
+  ) {}
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
   signIn(@Body() signInDto: Record<string, any>) {
-    return this.authService.signIn(signInDto.username, signInDto.password);
+    return this.authService.signIn(signInDto.email, signInDto.password);
   }
 
   @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('register')
+  register(@Body() registerDto: CreateUserDto) {
+    return this.authService.register(registerDto.email, registerDto.password);
+  }
+
   @Post('verify-signature')
   async verifySignature(
     @Body() verifyDto: { message: string; address: string; signature: string },
+    @Request() req,
   ) {
     const { Address, Signature } = await (eval(
       `import('@aleohq/sdk')`,
     ) as Promise<typeof import('@aleohq/sdk')>);
     const signer = Address.from_string(verifyDto.address);
 
-    return signer.verify(
+    const verified = signer.verify(
       new TextEncoder().encode(verifyDto.message),
       Signature.from_string(verifyDto.signature),
     );
+
+    if (verified)
+      return await this.userService.attachWalletAddress(
+        req.user.email,
+        verifyDto.address,
+      );
+
+    return verified;
   }
 
   @Get('/')
@@ -51,5 +72,21 @@ export class AuthController {
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Post('send-verification')
+  async sendVerificationCode(@Request() req) {
+    const user = req.user;
+    if (await this.userService.findOne(user.email)) {
+      return await this.authService.sendVerificationLink(user.email);
+    }
+    return user;
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Get('confirm-email')
+  async confirmEmail(@Query('token') token: string) {
+    return await this.authService.decodeToken(token);
   }
 }
