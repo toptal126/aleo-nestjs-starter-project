@@ -16,6 +16,7 @@ export class UsersService {
     return await this.userModel.create({
       email,
       password: hash,
+      code: (Math.random() * 900000 + 100000).toFixed(0),
     });
   }
 

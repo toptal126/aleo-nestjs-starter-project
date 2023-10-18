@@ -47,7 +47,7 @@ export class AuthService {
     };
   }
 
-  public async sendVerificationLink(email: string) {
+  public async sendVerificationLink(email: string, code: string) {
     const payload = { email };
 
     const token = await this.jwtService.signAsync(payload, {
@@ -66,7 +66,15 @@ export class AuthService {
       from: 'Aleo Mine Team <johanbechic@gmail.com>',
       to: email,
       subject: 'Email confirmation',
-      text,
+      html: `<span>We received your request for a single-use code to use with your Aleo Mine account.<br />
+    
+      Your single-use code is: ${code}<br />
+    
+      If you didn't request this code, you can safely ignore this email. Someone
+      else might have typed your email address by mistake.<br /><br />
+    
+      Thanks,<br />
+      The Aleo Mine team</span>`,
     });
   }
 
@@ -79,6 +87,17 @@ export class AuthService {
 
     user.emailVerified = true;
     await user.save();
+
+    if (!user) throw new UnauthorizedException();
+    return user;
+  }
+
+  async verifyCode(code: string, email: string) {
+    const user = await this.usersService.findOne(email);
+    if (code === user?.code) {
+      user.emailVerified = true;
+      await user.save();
+    }
 
     if (!user) throw new UnauthorizedException();
     return user;

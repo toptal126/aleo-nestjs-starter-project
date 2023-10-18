@@ -76,11 +76,12 @@ export class AuthController {
 
   @Post('send-verification')
   async sendVerificationCode(@Request() req) {
-    const user = req.user;
-    if (await this.userService.findOne(user.email)) {
-      return await this.authService.sendVerificationLink(user.email);
+    const { email }: { email: string } = req.user;
+    const user = await this.userService.findOne(email);
+    if (user) {
+      return await this.authService.sendVerificationLink(user.email, user.code);
     }
-    return user;
+    return email;
   }
 
   @Public()
@@ -88,5 +89,11 @@ export class AuthController {
   @Get('confirm-email')
   async confirmEmail(@Query('token') token: string) {
     return await this.authService.decodeToken(token);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('verify-code')
+  async verifyCode(@Query('code') code: string, @Request() req) {
+    return await this.authService.verifyCode(code, req.user.email);
   }
 }
